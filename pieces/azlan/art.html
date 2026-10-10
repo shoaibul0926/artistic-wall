@@ -17,7 +17,7 @@
 const canvas = document.getElementById('c');
 const ctx = canvas.getContext('2d');
 let w, h, dpr, particles = [];
-const COUNT_PER_PX = 1 / 900;
+const COUNT_PER_PX = 1 / 260;
 
 function resize() {
   dpr = Math.min(window.devicePixelRatio || 1, 2);
@@ -26,12 +26,12 @@ function resize() {
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   ctx.fillStyle = '#0b0f1a';
   ctx.fillRect(0, 0, w, h);
-  const n = Math.max(150, Math.min(1400, Math.floor(w * h * COUNT_PER_PX)));
+  const n = Math.max(600, Math.min(4000, Math.floor(w * h * COUNT_PER_PX)));
   particles = Array.from({ length: n }, spawn);
 }
 
 function spawn() {
-  return { x: Math.random() * w, y: Math.random() * h, life: 60 + Math.random() * 240, hue: Math.random() * 60 };
+  return { x: Math.random() * w, y: Math.random() * h, life: 150 + Math.random() * 400, hue: Math.random() * 60 };
 }
 
 // Smooth pseudo-noise built from layered sines; cheap and seamless.
@@ -50,20 +50,31 @@ let t = 0;
 function frame() {
   t += 0.004;
   ctx.globalCompositeOperation = 'source-over';
-  ctx.fillStyle = 'rgba(11, 15, 26, 0.07)';
+  ctx.fillStyle = 'rgba(11, 15, 26, 0.035)';
   ctx.fillRect(0, 0, w, h);
   ctx.globalCompositeOperation = 'lighter';
 
   const baseHue = (t * 40) % 360;
+  // Drifting aurora glows behind the particles.
+  const r = Math.max(w, h) * 0.55;
+  for (let i = 0; i < 3; i++) {
+    const gx = w * (0.5 + 0.4 * Math.sin(t * (0.7 + i * 0.3) + i * 2));
+    const gy = h * (0.5 + 0.4 * Math.cos(t * (0.5 + i * 0.2) + i));
+    const g = ctx.createRadialGradient(gx, gy, 0, gx, gy, r);
+    g.addColorStop(0, `hsla(${(baseHue + i * 120) % 360}, 90%, 50%, 0.03)`);
+    g.addColorStop(1, 'hsla(0, 0%, 0%, 0)');
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, w, h);
+  }
   for (const p of particles) {
     const a = field(p.x, p.y, t);
-    let vx = Math.cos(a) * 1.4, vy = Math.sin(a) * 1.4;
+    let vx = Math.cos(a) * 2.2, vy = Math.sin(a) * 2.2;
     // Gentle swirl around the pointer.
     const dx = p.x - mouse.x, dy = p.y - mouse.y, d2 = dx * dx + dy * dy;
     if (d2 < 22000) { const f = (1 - d2 / 22000) * 3; vx += -dy / 60 * f; vy += dx / 60 * f; }
     const nx = p.x + vx, ny = p.y + vy;
-    ctx.strokeStyle = `hsla(${(baseHue + p.hue + p.y * 0.08) % 360}, 90%, 62%, 0.35)`;
-    ctx.lineWidth = 1.2;
+    ctx.strokeStyle = `hsla(${(baseHue + p.hue + p.y * 0.08) % 360}, 95%, 64%, 0.7)`;
+    ctx.lineWidth = 2;
     ctx.beginPath(); ctx.moveTo(p.x, p.y); ctx.lineTo(nx, ny); ctx.stroke();
     p.x = nx; p.y = ny;
     if (--p.life < 0 || p.x < -10 || p.x > w + 10 || p.y < -10 || p.y > h + 10) Object.assign(p, spawn());
